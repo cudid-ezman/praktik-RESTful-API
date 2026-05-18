@@ -15,3 +15,7 @@ class FakultasCreate(BaseModel):
 
 class FakultasUpdate(BaseModel):
     nama: str
+
+class UserAuth(BaseModel):
+    username: str
+    password: str
