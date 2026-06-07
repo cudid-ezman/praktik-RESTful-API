@@ -10,11 +10,20 @@ import jwt
 import datetime
 from pwdlib import PasswordHash
 from pwdlib.hashers.bcrypt import BcryptHasher
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
 app = FastAPI(title="Praktikum Web API", version="1.0.0")
 models.Base.metadata.create_all(bind=engine)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,                  
+    allow_methods=["*"],                     
+    allow_headers=["*"],                     
+)
 
 SECRET_KEY = os.getenv("SECRET_KEY", "fallback_rahasia_default")
 REFRESH_SECRET_KEY = os.getenv("REFRESH_SECRET_KEY", "rahasia_refresh")
@@ -31,11 +40,34 @@ def get_db():
     finally:
         db.close()
 
+def verify_token(request: Request):
+    access_token = request.cookies.get("access_token")
+    if not access_token:
+        raise HTTPException(status_code=403, detail="Akses ditolak. Access Token tidak ditemukan.")
+    try:
+        decoded_data = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
+        return decoded_data
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Access Token kedaluwarsa. Silakan gunakan endpoint /refresh.")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Access Token tidak valid.")
+
 @app.get("/prodi/", status_code=200, description="Menampilkan data prodi")
 def list_prodi(db: Session = Depends(get_db)):
     query = text("SELECT * FROM prodi")
     data_prodi = db.execute(query).mappings().fetchall()
     return {"total": len(data_prodi), "data": data_prodi}
+
+# Endpoint ambil satu data prodi berdasarkan ID
+@app.get("/prodi/{prodi_id}")
+def get_prodi(prodi_id: str, db: Session = Depends(get_db), user_info: dict = Depends(verify_token)):
+    query = text("SELECT * FROM prodi WHERE id = :pid")
+    prodi = db.execute(query, {"pid": prodi_id}).mappings().fetchone()
+    
+    if not prodi:
+        raise HTTPException(status_code=404, detail="Prodi tidak ditemukan")
+        
+    return {"data": prodi}
 
 @app.post("/prodi/", status_code=201, description="Menambahkan data prodi baru ke database")
 def create_prodi(pro: ProdiCreate, db: Session = Depends(get_db)):
@@ -184,7 +216,7 @@ def login_user(user_data: UserAuth, response: Response, db: Session = Depends(ge
     }
     refresh_token = jwt.encode(refresh_payload, REFRESH_SECRET_KEY, algorithm=ALGORITHM)
     
-    response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60)
+    response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60, samesite="none", secure=True, path="/",)
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60)
     
     return {"message": "Login berhasil, token telah diset."}
@@ -212,25 +244,13 @@ def refresh_access_token(request: Request, response: Response, db: Session = Dep
         }
         new_access_token = jwt.encode(new_access_payload, SECRET_KEY, algorithm=ALGORITHM)
         
-        response.set_cookie(key="access_token", value=new_access_token, httponly=True, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60)
+        response.set_cookie(key="access_token", value=new_access_token, httponly=True, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60, samesite="none", secure=True, path="/",)
         return {"message": "Access token berhasil diperbarui."}
         
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Refresh token kedaluwarsa. Silakan login kembali.")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Refresh token tidak valid.")
-
-def verify_token(request: Request):
-    access_token = request.cookies.get("access_token")
-    if not access_token:
-        raise HTTPException(status_code=403, detail="Akses ditolak. Access Token tidak ditemukan.")
-    try:
-        decoded_data = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
-        return decoded_data
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Access Token kedaluwarsa. Silakan gunakan endpoint /refresh.")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Access Token tidak valid.")
 
 @app.get("/profil", tags=["Protected"])
 def profil_user(user_info: dict = Depends(verify_token)):
