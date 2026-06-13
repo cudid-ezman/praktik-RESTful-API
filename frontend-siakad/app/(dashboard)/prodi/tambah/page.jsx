@@ -13,7 +13,7 @@ export default function TambahProdi() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const response = await fetchWithRefresh("http://127.0.0.1:8000/prodi/", {
+    const response = await fetchWithRefresh("/api/prodi/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, nama, fakultas }),

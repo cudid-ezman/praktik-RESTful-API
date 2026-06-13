@@ -1,9 +1,10 @@
 from fastapi import FastAPI, Depends, HTTPException, Response, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-import models
-from schemas import ProdiCreate, ProdiUpdate, FakultasCreate, FakultasUpdate, UserAuth
-from database import SessionLocal, engine
+from database import engine, get_db, Base  
+from models import Prodi, Fakultas, User
+from schemas import FakultasCreate, FakultasUpdate, UserAuth
+from dependencies import verify_token
 import os
 from dotenv import load_dotenv
 import jwt
@@ -11,11 +12,13 @@ import datetime
 from pwdlib import PasswordHash
 from pwdlib.hashers.bcrypt import BcryptHasher
 from fastapi.middleware.cors import CORSMiddleware
+from controllers import prodi_controller
 
 load_dotenv()
 
 app = FastAPI(title="Praktikum Web API", version="1.0.0")
-models.Base.metadata.create_all(bind=engine)
+
+Base.metadata.create_all(bind=engine) 
 
 app.add_middleware(
     CORSMiddleware,
@@ -25,6 +28,7 @@ app.add_middleware(
     allow_headers=["*"],                     
 )
 
+# Konfigurasi Keamanan
 SECRET_KEY = os.getenv("SECRET_KEY", "fallback_rahasia_default")
 REFRESH_SECRET_KEY = os.getenv("REFRESH_SECRET_KEY", "rahasia_refresh")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
@@ -33,94 +37,22 @@ REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7))
 
 pwd_context = PasswordHash([BcryptHasher()])
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# ==========================================
+# REGISTRASI ROUTER LAYERED ARCHITECTURE
+# ==========================================
+app.include_router(prodi_controller.router)
 
-def verify_token(request: Request):
-    access_token = request.cookies.get("access_token")
-    if not access_token:
-        raise HTTPException(status_code=403, detail="Akses ditolak. Access Token tidak ditemukan.")
-    try:
-        decoded_data = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
-        return decoded_data
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Access Token kedaluwarsa. Silakan gunakan endpoint /refresh.")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Access Token tidak valid.")
 
-@app.get("/prodi/", status_code=200, description="Menampilkan data prodi")
-def list_prodi(db: Session = Depends(get_db)):
-    query = text("SELECT * FROM prodi")
-    data_prodi = db.execute(query).mappings().fetchall()
-    return {"total": len(data_prodi), "data": data_prodi}
+# =================
+# ENDPOINT FAKULTAS
+# =================
 
-# Endpoint ambil satu data prodi berdasarkan ID
-@app.get("/prodi/{prodi_id}")
-def get_prodi(prodi_id: str, db: Session = Depends(get_db), user_info: dict = Depends(verify_token)):
-    query = text("SELECT * FROM prodi WHERE id = :pid")
-    prodi = db.execute(query, {"pid": prodi_id}).mappings().fetchone()
-    
-    if not prodi:
-        raise HTTPException(status_code=404, detail="Prodi tidak ditemukan")
-        
-    return {"data": prodi}
-
-@app.post("/prodi/", status_code=201, description="Menambahkan data prodi baru ke database")
-def create_prodi(pro: ProdiCreate, db: Session = Depends(get_db)):
-    try:
-        query = text("INSERT INTO prodi VALUES (:pid, :pnama, :pfakultas)")
-        db.execute(query, {"pid": pro.id, "pnama": pro.nama, "pfakultas": pro.fakultas})
-        db.commit()
-        return {
-            "message": "Data berhasil disimpan",
-            "data": {"id": pro.id, "nama": pro.nama, "fakultas": pro.fakultas}
-        }
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
-
-@app.put("/prodi/{prodi_id}", status_code=200, description="Memperbarui data prodi")
-def update_prodi(prodi_id: str, pro: ProdiUpdate, db: Session = Depends(get_db)):
-    try:
-        query = text("UPDATE prodi SET nama=:pnama, fakultas=:pfakultas WHERE id=:pid")
-        result = db.execute(query, {"pid": prodi_id, "pnama": pro.nama, "pfakultas": pro.fakultas})
-        db.commit()
-        if result.rowcount == 0:
-            raise HTTPException(status_code=404, detail="Prodi tidak ditemukan")
-        return {
-            "message": "Data berhasil diperbarui",
-            "data": {"id": prodi_id, "nama": pro.nama, "fakultas": pro.fakultas}
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
-
-@app.delete("/prodi/{prodi_id}", status_code=200, description="Menghapus data prodi")
-def delete_prodi(prodi_id: str, db: Session = Depends(get_db)):
-    try:
-        query = text("DELETE FROM prodi WHERE id=:pid")
-        result = db.execute(query, {"pid": prodi_id})
-        db.commit()
-        if result.rowcount == 0:
-            raise HTTPException(status_code=404, detail="Prodi tidak ditemukan")
-        return {"message": f"Data dengan ID {prodi_id} berhasil dihapus"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
-
+@app.get("/fakultas", status_code=200, description="Mengambil semua daftar fakultas")
 @app.get("/fakultas/", status_code=200, description="Mengambil semua daftar fakultas")
 def list_fakultas(db: Session = Depends(get_db)):
     query = text("SELECT * FROM fakultas")
     data_fakultas = db.execute(query).mappings().fetchall()
-    return {"total": len(data_fakultas), "data": data_fakultas}
+    return {"total": len(data_fakultas), "data": [dict(item) for item in data_fakultas]}
 
 @app.get("/fakultas/{id}", status_code=200, description="Mengambil detail fakultas berdasarkan ID")
 def get_fakultas(id: str, db: Session = Depends(get_db)):
@@ -128,8 +60,9 @@ def get_fakultas(id: str, db: Session = Depends(get_db)):
     result = db.execute(query, {"fid": id}).mappings().fetchone()
     if not result:
         raise HTTPException(status_code=404, detail="Fakultas tidak ditemukan")
-    return {"data": result}
+    return {"data": dict(result)}
 
+@app.post("/fakultas", status_code=201, description="Menyimpan data fakultas baru")
 @app.post("/fakultas/", status_code=201, description="Menyimpan data fakultas baru")
 def create_fakultas(fak: FakultasCreate, db: Session = Depends(get_db)):
     try:
@@ -177,6 +110,11 @@ def delete_fakultas(id: str, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
 
+
+# ======================
+# ENDPOINT AUTH & PROFIL 
+# ======================
+
 @app.post("/register", status_code=201, tags=["Auth"])
 def register_user(user_data: UserAuth, db: Session = Depends(get_db)):
     try:
@@ -216,8 +154,9 @@ def login_user(user_data: UserAuth, response: Response, db: Session = Depends(ge
     }
     refresh_token = jwt.encode(refresh_payload, REFRESH_SECRET_KEY, algorithm=ALGORITHM)
     
-    response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60, samesite="none", secure=True, path="/",)
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60)
+    # PERBAIKAN: samesite menjadi lax dan secure menjadi False untuk localhost HTTP
+    response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60, samesite="lax", secure=False, path="/",)
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60, samesite="lax", secure=False, path="/",)
     
     return {"message": "Login berhasil, token telah diset."}
 
@@ -244,7 +183,8 @@ def refresh_access_token(request: Request, response: Response, db: Session = Dep
         }
         new_access_token = jwt.encode(new_access_payload, SECRET_KEY, algorithm=ALGORITHM)
         
-        response.set_cookie(key="access_token", value=new_access_token, httponly=True, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60, samesite="none", secure=True, path="/",)
+        # PERBAIKAN: samesite menjadi lax dan secure menjadi False
+        response.set_cookie(key="access_token", value=new_access_token, httponly=True, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60, samesite="lax", secure=False, path="/",)
         return {"message": "Access token berhasil diperbarui."}
         
     except jwt.ExpiredSignatureError:

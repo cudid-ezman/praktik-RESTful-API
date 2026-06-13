@@ -1,7 +1,7 @@
 // app/lib/api.js
 export async function refreshAccessToken() {
   try {
-    const response = await fetch("http://127.0.0.1:8000/refresh", {
+    const response = await fetch("/api/refresh", {
       method: "POST",
       credentials: "include", // Supaya cookie refresh_token ikut terkirim
     });

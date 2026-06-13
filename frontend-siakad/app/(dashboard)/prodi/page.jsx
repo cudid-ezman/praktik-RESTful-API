@@ -17,13 +17,13 @@ export default function Dashboard() {
     const loadData = async () => {
       try {
         // Fetch profil untuk mendapatkan username
-        const resAuth = await fetchWithRefresh("http://127.0.0.1:8000/profil");
+        const resAuth = await fetchWithRefresh("/api/profil");
         if (!resAuth.ok) throw new Error(`HTTP ${resAuth.status}`);
         const authData = await resAuth.json();
         setUser(authData.data_login.username);
 
         // Fetch data tabel prodi
-        const resProdi = await fetchWithRefresh("http://127.0.0.1:8000/prodi/");
+        const resProdi = await fetchWithRefresh("/api/prodi/");
         if (!resProdi.ok) {
           console.error(
             "fetch /prodi failed",
@@ -45,7 +45,7 @@ export default function Dashboard() {
   const handleDelete = async (id) => {
     if (!confirm("Yakin ingin menghapus data ini?")) return;
     try {
-      const res = await fetchWithRefresh(`http://127.0.0.1:8000/prodi/${id}`, {
+      const res = await fetchWithRefresh(`/api/prodi/${id}`, {
         method: "DELETE",
       });
       if (res.ok) {
@@ -62,7 +62,7 @@ export default function Dashboard() {
 
   const handleLogout = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/logout", {
+      const res = await fetch("/api/logout", {
         method: "POST",
         credentials: "include", // Wajib agar cookie dikirim ke server untuk dihapus
       });

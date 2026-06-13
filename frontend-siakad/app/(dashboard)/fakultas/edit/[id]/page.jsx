@@ -14,12 +14,9 @@ export default function EditFakultas({ params }) {
   useEffect(() => {
     const fetchDataFakultas = async (id) => {
       try {
-        const res = await fetchWithRefresh(
-          `http://127.0.0.1:8000/fakultas/${id}`,
-          {
-            method: "GET",
-          },
-        );
+        const res = await fetchWithRefresh(`/api/fakultas/${id}`, {
+          method: "GET",
+        });
         const result = await res.json();
         setNama(result.data?.nama ?? "");
       } catch (err) {
@@ -31,14 +28,11 @@ export default function EditFakultas({ params }) {
 
   const handleUpdate = async (e) => {
     e.preventDefault();
-    const response = await fetchWithRefresh(
-      `http://127.0.0.1:8000/fakultas/${id}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nama }), // Hanya nama yang bisa diubah
-      },
-    );
+    const response = await fetchWithRefresh(`/api/fakultas/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nama }), // Hanya nama yang bisa diubah
+    });
 
     if (response.ok) {
       alert("Data fakultas berhasil diperbarui");

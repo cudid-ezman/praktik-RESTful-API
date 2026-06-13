@@ -14,15 +14,13 @@ export default function DashboardFakultas() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const resAuth = await fetchWithRefresh("http://127.0.0.1:8000/profil");
+        const resAuth = await fetchWithRefresh("/api/profil");
         if (!resAuth.ok) throw new Error(`HTTP ${resAuth.status}`);
         const authData = await resAuth.json();
         setUser(authData.data_login.username);
 
         // Fetch data tabel fakultas
-        const resFakultas = await fetchWithRefresh(
-          "http://127.0.0.1:8000/fakultas/",
-        );
+        const resFakultas = await fetchWithRefresh("/api/fakultas/");
         if (!resFakultas.ok) {
           throw new Error(`HTTP ${resFakultas.status}`);
         }
@@ -39,12 +37,9 @@ export default function DashboardFakultas() {
   const handleDelete = async (id) => {
     if (!confirm("Yakin ingin menghapus data fakultas ini?")) return;
     try {
-      const res = await fetchWithRefresh(
-        `http://127.0.0.1:8000/fakultas/${id}`,
-        {
-          method: "DELETE",
-        },
-      );
+      const res = await fetchWithRefresh(`/api/fakultas/${id}`, {
+        method: "DELETE",
+      });
       if (res.ok) {
         setRefreshTrigger((prev) => prev + 1);
       } else {
@@ -58,7 +53,7 @@ export default function DashboardFakultas() {
 
   const handleLogout = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/logout", {
+      const res = await fetch("/api/logout", {
         method: "POST",
         credentials: "include",
       });
