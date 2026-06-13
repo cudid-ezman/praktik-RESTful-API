@@ -16,7 +16,8 @@ export default function Login() {
     setError("");
 
     try {
-      const response = await fetch("/api/login", {
+      // UBAH: Arahkan fetch langsung ke localhost:8000
+      const response = await fetch("http://localhost:8000/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),

@@ -16,14 +16,14 @@ export default function Dashboard() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Fetch profil untuk mendapatkan username
-        const resAuth = await fetchWithRefresh("/api/profil");
+        // UBAH 1: Fetch profil diarahkan langsung ke localhost:8000
+        const resAuth = await fetchWithRefresh("http://localhost:8000/profil");
         if (!resAuth.ok) throw new Error(`HTTP ${resAuth.status}`);
         const authData = await resAuth.json();
-        setUser(authData.data_login.username);
+        setUser(authData.data.username);
 
-        // Fetch data tabel prodi
-        const resProdi = await fetchWithRefresh("/api/prodi/");
+        // UBAH 2: Fetch data tabel prodi diarahkan langsung ke localhost:8000/prodi/
+        const resProdi = await fetchWithRefresh("http://localhost:8000/prodi/");
         if (!resProdi.ok) {
           console.error(
             "fetch /prodi failed",
@@ -45,7 +45,8 @@ export default function Dashboard() {
   const handleDelete = async (id) => {
     if (!confirm("Yakin ingin menghapus data ini?")) return;
     try {
-      const res = await fetchWithRefresh(`/api/prodi/${id}`, {
+      // UBAH 3: Delete diarahkan langsung ke localhost:8000
+      const res = await fetchWithRefresh(`http://localhost:8000/prodi/${id}`, {
         method: "DELETE",
       });
       if (res.ok) {
@@ -62,7 +63,8 @@ export default function Dashboard() {
 
   const handleLogout = async () => {
     try {
-      const res = await fetch("/api/logout", {
+      // UBAH 4: Logout diarahkan langsung ke localhost:8000
+      const res = await fetch("http://localhost:8000/logout", {
         method: "POST",
         credentials: "include", // Wajib agar cookie dikirim ke server untuk dihapus
       });

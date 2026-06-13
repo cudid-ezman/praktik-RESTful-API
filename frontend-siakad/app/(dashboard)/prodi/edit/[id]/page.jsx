@@ -15,9 +15,12 @@ export default function EditProdi({ params }) {
   useEffect(() => {
     const fetchDataProdi = async (id) => {
       try {
-        const res = await fetchWithRefresh(`/api/prodi/${id}`, {
-          method: "GET",
-        });
+        const res = await fetchWithRefresh(
+          `http://localhost:8000/prodi/${id}`,
+          {
+            method: "GET",
+          },
+        );
         const result = await res.json();
         console.log(result);
         setNama(result.data?.nama ?? "");
@@ -32,11 +35,14 @@ export default function EditProdi({ params }) {
   const handleUpdate = async (e) => {
     e.preventDefault();
     // Memanggil endpoint PUT /prodi/{id}
-    const response = await fetchWithRefresh(`/api/prodi/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nama, fakultas }),
-    });
+    const response = await fetchWithRefresh(
+      `http://localhost:8000/prodi/${id}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nama, fakultas }),
+      },
+    );
 
     if (response.ok) {
       alert("Data berhasil diperbarui");

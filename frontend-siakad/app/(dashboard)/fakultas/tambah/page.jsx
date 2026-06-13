@@ -12,7 +12,7 @@ export default function TambahFakultas() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const response = await fetchWithRefresh("/api/fakultas/", {
+    const response = await fetchWithRefresh("http://localhost:8000/fakultas/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, nama }),

@@ -1,7 +1,8 @@
 // app/lib/api.js
 export async function refreshAccessToken() {
   try {
-    const response = await fetch("/api/refresh", {
+    // UBAH: Arahkan fetch langsung ke localhost:8000
+    const response = await fetch("http://localhost:8000/refresh", {
       method: "POST",
       credentials: "include", // Supaya cookie refresh_token ikut terkirim
     });

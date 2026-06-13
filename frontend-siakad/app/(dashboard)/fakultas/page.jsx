@@ -14,13 +14,16 @@ export default function DashboardFakultas() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const resAuth = await fetchWithRefresh("/api/profil");
+        // UBAH 1: Arahkan langsung ke localhost
+        const resAuth = await fetchWithRefresh("http://localhost:8000/profil");
         if (!resAuth.ok) throw new Error(`HTTP ${resAuth.status}`);
         const authData = await resAuth.json();
-        setUser(authData.data_login.username);
+        setUser(authData.data.username);
 
-        // Fetch data tabel fakultas
-        const resFakultas = await fetchWithRefresh("/api/fakultas/");
+        // UBAH 2: Arahkan langsung ke localhost (pastikan ada garis miring di akhir)
+        const resFakultas = await fetchWithRefresh(
+          "http://localhost:8000/fakultas/",
+        );
         if (!resFakultas.ok) {
           throw new Error(`HTTP ${resFakultas.status}`);
         }
@@ -37,9 +40,13 @@ export default function DashboardFakultas() {
   const handleDelete = async (id) => {
     if (!confirm("Yakin ingin menghapus data fakultas ini?")) return;
     try {
-      const res = await fetchWithRefresh(`/api/fakultas/${id}`, {
-        method: "DELETE",
-      });
+      // UBAH 3: Arahkan langsung ke localhost
+      const res = await fetchWithRefresh(
+        `http://localhost:8000/fakultas/${id}`,
+        {
+          method: "DELETE",
+        },
+      );
       if (res.ok) {
         setRefreshTrigger((prev) => prev + 1);
       } else {
@@ -53,7 +60,8 @@ export default function DashboardFakultas() {
 
   const handleLogout = async () => {
     try {
-      const res = await fetch("/api/logout", {
+      // UBAH 4: Arahkan langsung ke localhost
+      const res = await fetch("http://localhost:8000/logout", {
         method: "POST",
         credentials: "include",
       });
